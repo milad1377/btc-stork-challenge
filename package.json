@@ -1,9 +1,9 @@
 {
-    "name": "btc-stork-challenge",
-    "version": "1.0.0",
-    "dependencies": {
-        "mongodb": "^6.3.0",
-        "ethers": "^5.7.2",
-        "node-fetch": "^3.3.2"
-    }
+  "name": "btc-stork-challenge",
+  "version": "1.0.0",
+  "dependencies": {
+    "mongodb": "^6.3.0",
+    "ethers": "^6.10.0", 
+    "node-fetch": "^3.3.2"
+  }
 }
