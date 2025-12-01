@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <title>چالش پیش‌بینی BTC (با Stork)</title>
+    <style>
+        /* ... کدهای CSS (مانند پاسخ‌های قبلی) ... */
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <h2>🏆 چالش پیش‌بینی BTC: قیمت دقیق (با Stork)</h2>
+        <p class="deadline-info" id="deadline-status">در حال بارگذاری وضعیت...</p>
+
+        <div id="prediction-form">
+            <input type="text" id="discord-username" placeholder="یوزرنیم دیسکورد (مثلاً user#1234)" required>
+            <input type="number" id="predicted-price" placeholder="پیش‌بینی قیمت BTC در ۱۲:۰۰ UTC (USD)" required
+                step="0.01">
+            <button onclick="submitPrediction()">ثبت پیش‌بینی</button>
+        </div>
+
+        <div id="message"></div>
+
+        <div class="winner-display" id="winners-section">
+            <h3>برندگان آخرین چالش:</h3>
+            <ul id="winner-list" class="winner-list"></ul>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+
+</body>
+
+</html>
