@@ -14,7 +14,7 @@ async function connectToDatabase() {
 }
 
 module.exports = async (req, res) => {
-    // فقط درخواست‌های GET را بپذیر
+    // Only accept GET requests
     if (req.method !== 'GET') {
         return res.status(405).json({ error: 'Method Not Allowed' });
     }
@@ -29,7 +29,7 @@ module.exports = async (req, res) => {
         const db = await connectToDatabase();
         const winnersCollection = db.collection('winners');
 
-        // جستجوی نتایج برای تاریخ مشخص شده
+        // Search for results for the specified date
         const result = await winnersCollection.findOne({ _id: date });
 
         if (!result) {
@@ -42,7 +42,7 @@ module.exports = async (req, res) => {
         res.status(200).json({
             status: 'SUCCESS',
             finalPrice: result.finalPrice,
-            topWinners: result.topWinners,
+            winners: result.topWinners, // Changed from topWinners to winners
             resolvedAt: result.resolvedAt
         });
 

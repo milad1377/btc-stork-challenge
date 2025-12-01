@@ -1,6 +1,6 @@
 const { MongoClient } = require('mongodb');
 
-// گرفتن متغیر محیطی
+// Get environment variable
 const MONGODB_URI = process.env.MONGODB_URI;
 const DB_NAME = 'BTC_Challenge';
 const COLLECTION_NAME = 'predictions';
@@ -9,7 +9,7 @@ let cachedClient = null;
 let cachedDb = null;
 
 async function connectToDatabase() {
-    // اگر کانکشن باز است، از همان استفاده کن
+    // If connection is open, use it
     if (cachedClient && cachedDb) {
         return { client: cachedClient, db: cachedDb };
     }
@@ -18,7 +18,7 @@ async function connectToDatabase() {
         throw new Error('Please define the MONGODB_URI environment variable');
     }
 
-    // اتصال جدید
+    // New connection
     const client = await MongoClient.connect(MONGODB_URI);
     const db = client.db(DB_NAME);
 
@@ -29,9 +29,9 @@ async function connectToDatabase() {
 }
 
 module.exports = async (req, res) => {
-    // حل مشکل CORS (اگر لازم شد)
+    // Fix CORS (if needed)
     res.setHeader('Access-Control-Allow-Origin', '*');
-    
+
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method Not Allowed' });
     }
@@ -46,6 +46,19 @@ module.exports = async (req, res) => {
         const { db } = await connectToDatabase();
         const collection = db.collection(COLLECTION_NAME);
 
+        // Check if username already exists for this challenge date
+        const existingUser = await collection.findOne({
+            discordUsername: discordUsername,
+            challengeDate: challengeDate
+        });
+
+        if (existingUser) {
+            return res.status(400).json({
+                error: 'This username has already participated in this challenge'
+            });
+        }
+
+        // Insert new prediction
         await collection.insertOne({
             discordUsername,
             prediction: parseFloat(prediction),
@@ -57,7 +70,7 @@ module.exports = async (req, res) => {
 
     } catch (error) {
         console.error("Database Error:", error);
-        // ارسال متن دقیق خطا برای دیباگ
+        // Send exact error text for debugging
         return res.status(500).json({ error: 'Internal Server Error', details: error.message });
     }
 };
