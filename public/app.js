@@ -1,83 +1,208 @@
 // =========================================================
-// ۱. تنظیمات چالش
+// 1. Challenge Settings - Daily Challenge
 // =========================================================
-// تاریخ چالش: دسامبر ۱، ۲۰۲۵ در ۱۲:۰۰ UTC
-const challengeDateString = '2025-12-01T12:00:00Z';
-const deadlineUTC = new Date(challengeDateString);
+function getTodaysChallengeDeadline() {
+    const now = new Date();
+    const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 12, 0, 0));
+
+    // If current time is past today's 12:00 UTC, move to tomorrow's challenge
+    if (now >= today) {
+        today.setUTCDate(today.getUTCDate() + 1);
+    }
+
+    return today;
+}
+
+const deadlineUTC = getTodaysChallengeDeadline();
 const lockDownPeriodHours = 4;
 const lockDownTime = new Date(deadlineUTC.getTime() - lockDownPeriodHours * 60 * 60 * 1000);
 
 // =========================================================
-// ۲. توابع اتصال و زمان‌بندی
+// 2. Fetch Real-time Bitcoin Price
 // =========================================================
+async function fetchBitcoinPrice() {
+    const priceElement = document.getElementById('btc-price');
+    const updateTimeElement = document.getElementById('price-update-time');
 
-// چک کردن وضعیت و نمایش فرم
+    try {
+        const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd');
+        const data = await response.json();
+
+        if (data && data.bitcoin && data.bitcoin.usd) {
+            const price = data.bitcoin.usd;
+            priceElement.innerHTML = `$${price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+            const now = new Date();
+            const timeString = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            updateTimeElement.textContent = `Last updated: ${timeString}`;
+        } else {
+            throw new Error('Invalid data format');
+        }
+    } catch (error) {
+        console.error('Error fetching Bitcoin price:', error);
+        priceElement.innerHTML = '<span style="font-size: 18px;">Error fetching price</span>';
+        updateTimeElement.textContent = 'Please check your internet connection';
+    }
+}
+
+// =========================================================
+// 3. Check User Participation
+// =========================================================
+function checkUserParticipation() {
+    const challengeKey = deadlineUTC.toISOString().slice(0, 10);
+    const storageKey = `btc_challenge_${challengeKey}`;
+    const participated = localStorage.getItem(storageKey);
+
+    return participated !== null;
+}
+
+function saveUserParticipation(username) {
+    const challengeKey = deadlineUTC.toISOString().slice(0, 10);
+    const storageKey = `btc_challenge_${challengeKey}`;
+    localStorage.setItem(storageKey, JSON.stringify({
+        username: username,
+        timestamp: new Date().toISOString()
+    }));
+}
+
+// =========================================================
+// 4. Fetch and Display Participants
+// =========================================================
+async function fetchParticipants() {
+    const participantsList = document.getElementById('participants-list');
+    const participantsCount = document.getElementById('participants-count');
+    const challengeKey = deadlineUTC.toISOString().slice(0, 10);
+
+    try {
+        const response = await fetch(`/api/participants?date=${challengeKey}`);
+        const data = await response.json();
+
+        if (data && data.participants && data.participants.length > 0) {
+            participantsCount.textContent = data.participants.length;
+            participantsList.innerHTML = '';
+
+            data.participants.forEach((participant, index) => {
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <strong>${index + 1}.</strong> ${participant.username} 
+                    - $${participant.prediction.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                `;
+                participantsList.appendChild(li);
+            });
+        } else {
+            participantsCount.textContent = '0';
+            participantsList.innerHTML = '<li>No participants yet</li>';
+        }
+    } catch (error) {
+        console.error('Error fetching participants:', error);
+        participantsCount.textContent = '0';
+        participantsList.innerHTML = '<li>Error loading participants</li>';
+    }
+}
+
+// =========================================================
+// 5. Check Challenge Status and Lock Form
+// =========================================================
 function checkChallengeStatus() {
     const now = new Date();
     const deadlineElement = document.getElementById('deadline-status');
     const formElement = document.getElementById('prediction-form');
+    const submitButton = formElement.querySelector('button');
 
-    // ... منطق بررسی زمان و قفل کردن فرم (مانند پاسخ‌های قبلی) ...
+    // Check if user has already participated
+    if (checkUserParticipation()) {
+        const messageElement = document.getElementById('message');
+        messageElement.className = 'info';
+        messageElement.innerHTML = '✅ You have already participated in this challenge';
+        submitButton.disabled = true;
+        submitButton.textContent = 'Already Participated';
+    }
 
-    let statusMessage = `زمان اتمام چالش: ${deadlineUTC.toLocaleTimeString('fa-IR', { timeZone: 'UTC', hour: '2-digit', minute: '2-digit' })} UTC`;
-    // ...
-    // اگر زمان چالش گذشته، سعی کنید تابع حل چالش را فراخوانی کنید:
+    // Calculate time remaining
+    const timeUntilDeadline = deadlineUTC - now;
+    const timeUntilLockdown = lockDownTime - now;
+
     if (now >= deadlineUTC) {
-        // این فراخوانی برای حل چالش توسط اولین کاربر پس از زمان تعیین شده است (Triggered Resolution)
+        // Challenge has ended
+        deadlineElement.innerHTML = '⏰ Challenge time has ended';
+        submitButton.disabled = true;
+        submitButton.textContent = 'Challenge Ended';
         triggerResolution();
-    }
-    // ...
-}
+    } else if (now >= lockDownTime) {
+        // In lockdown period
+        const minutesLeft = Math.floor(timeUntilDeadline / 60000);
+        deadlineElement.innerHTML = `🔒 Form is locked. ${minutesLeft} minutes until results`;
+        submitButton.disabled = true;
+        submitButton.textContent = 'Form Locked';
+    } else {
+        // Still accepting submissions
+        const hoursLeft = Math.floor(timeUntilLockdown / 3600000);
+        const minutesLeft = Math.floor((timeUntilLockdown % 3600000) / 60000);
 
-// فراخوانی تابع حل چالش Vercel (توسط کاربر)
-async function triggerResolution() {
-    // URL تابع حل چالش Vercel
-    const resolveUrl = '/api/resolve';
-    try {
-        const response = await fetch(resolveUrl);
-        const data = await response.json();
+        const deadlineTimeString = deadlineUTC.toLocaleTimeString('en-US', {
+            timeZone: 'UTC',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
 
-        if (data.status === 'SUCCESS' || data.status === 'RESOLVED') {
-            displayWinners(); // در صورت حل شدن، برندگان را نمایش بده
+        const deadlineDateString = deadlineUTC.toLocaleDateString('en-US', {
+            timeZone: 'UTC',
+            month: 'short',
+            day: 'numeric'
+        });
+
+        deadlineElement.innerHTML = `⏰ Deadline: ${deadlineDateString} at ${deadlineTimeString} UTC | Time remaining: ${hoursLeft}h ${minutesLeft}m`;
+
+        // Keep form enabled only if user hasn't participated
+        if (!checkUserParticipation()) {
+            submitButton.disabled = false;
+            submitButton.textContent = 'Submit Prediction';
         }
-    } catch (e) {
-        console.error("Error triggering resolution:", e);
     }
 }
 
-// نمایش نتایج برندگان (از تابع Vercel خوانده می‌شود)
-async function displayWinners() {
-    const winnerList = document.getElementById('winner-list');
-    const challengeKey = deadlineUTC.toISOString().slice(0, 10);
-
-    // URL برای خواندن نتایج از MongoDB (این باید یک API Route جداگانه باشد، اما برای سادگی،
-    // فرض می‌کنیم تابع resolve نتایج را برای نمایش در این بخش برگردانده یا 
-    // از API route دیگری خوانده می‌شود.)
-    // برای سادگی، یک API route جدید (get-results.js) فرض می‌کنیم که فقط می‌خواند.
-
-    try {
-        const response = await fetch(`/api/get-winners?date=${challengeKey}`);
-        const data = await response.json();
-
-        // ... منطق نمایش برندگان (مانند پاسخ قبلی) ...
-
-    } catch (e) {
-        winnerList.innerHTML = '<li>خطا در بارگذاری برندگان.</li>';
-    }
-}
-
-// تابع ارسال پیش‌بینی به Vercel Function
+// =========================================================
+// 6. Submit Prediction
+// =========================================================
 async function submitPrediction() {
     const username = document.getElementById('discord-username').value.trim();
     const price = document.getElementById('predicted-price').value.trim();
     const messageElement = document.getElementById('message');
 
-    // ... منطق اعتبارسنجی (مانند پاسخ قبلی) ...
+    // Check if user has already participated
+    if (checkUserParticipation()) {
+        messageElement.className = 'error';
+        messageElement.innerHTML = '❌ You have already participated in this challenge';
+        return;
+    }
+
+    // Validate inputs
+    if (!username || !price) {
+        messageElement.className = 'error';
+        messageElement.innerHTML = '❌ Please fill in all fields';
+        return;
+    }
 
     const priceNumber = parseFloat(price);
+    if (isNaN(priceNumber) || priceNumber <= 0) {
+        messageElement.className = 'error';
+        messageElement.innerHTML = '❌ Please enter a valid price';
+        return;
+    }
+
+    // Check time
+    const now = new Date();
+    if (now >= lockDownTime) {
+        messageElement.className = 'error';
+        messageElement.innerHTML = '❌ Submission time has ended';
+        return;
+    }
+
+    // Show submitting status
+    messageElement.className = 'info';
+    messageElement.innerHTML = '⏳ Submitting...';
 
     try {
-        // ارسال داده به Vercel Function: /api/submit
         const response = await fetch('/api/submit', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -91,17 +216,139 @@ async function submitPrediction() {
         const result = await response.json();
 
         if (response.ok) {
-            messageElement.innerText = `✅ پیش‌بینی شما (${price} دلار) ثبت شد.`;
-        } else {
-            messageElement.innerText = `❌ خطا: ${result.error || 'خطایی رخ داد.'}`;
-        }
+            // Save user participation
+            saveUserParticipation(username);
 
-    } catch (e) {
-        messageElement.innerText = '❌ خطای اتصال.';
+            messageElement.className = 'success';
+            messageElement.innerHTML = `✅ Your prediction ($${priceNumber.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}) has been submitted successfully`;
+
+            // Disable button
+            const submitButton = document.querySelector('#prediction-form button');
+            submitButton.disabled = true;
+            submitButton.textContent = 'Already Participated';
+
+            // Clear form
+            document.getElementById('discord-username').value = '';
+            document.getElementById('predicted-price').value = '';
+
+            // Refresh participants list
+            fetchParticipants();
+        } else {
+            messageElement.className = 'error';
+            messageElement.innerHTML = `❌ Error: ${result.error || 'An error occurred'}`;
+        }
+    } catch (error) {
+        console.error('Submission error:', error);
+        messageElement.className = 'error';
+        messageElement.innerHTML = '❌ Connection error. Please try again';
     }
 }
 
+// =========================================================
+// 7. Trigger Challenge Resolution
+// =========================================================
+async function triggerResolution() {
+    const resolveUrl = '/api/resolve';
+    try {
+        const response = await fetch(resolveUrl);
+        const data = await response.json();
+
+        if (data.status === 'SUCCESS' || data.status === 'RESOLVED') {
+            displayWinners();
+        }
+    } catch (error) {
+        console.error("Error triggering resolution:", error);
+    }
+}
+
+// =========================================================
+// 8. Display Winners
+// =========================================================
+async function displayWinners() {
+    const winnerList = document.getElementById('winners-list');
+    const winnersCount = document.getElementById('winners-count');
+    const challengeKey = deadlineUTC.toISOString().slice(0, 10);
+
+    try {
+        const response = await fetch(`/api/get-winners?date=${challengeKey}`);
+        const data = await response.json();
+
+        if (data && data.winners && data.winners.length > 0) {
+            winnersCount.textContent = data.winners.length;
+            winnerList.innerHTML = '';
+
+            data.winners.forEach((winner, index) => {
+                const li = document.createElement('li');
+                const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉';
+                li.innerHTML = `
+                    ${medal} <strong>${winner.username}</strong><br>
+                    Prediction: $${winner.prediction.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                    ${winner.difference ? `<br>Difference: $${winner.difference.toFixed(2)}` : ''}
+                `;
+                winnerList.appendChild(li);
+            });
+        } else {
+            winnersCount.textContent = '0';
+            winnerList.innerHTML = '<li>No winners yet</li>';
+        }
+    } catch (error) {
+        console.error('Error fetching winners:', error);
+        winnersCount.textContent = '0';
+        winnerList.innerHTML = '<li>Error loading winners</li>';
+    }
+}
+
+// =========================================================
+// 9. Toggle Dropdown
+// =========================================================
+function toggleDropdown(dropdownId) {
+    const dropdown = document.getElementById(dropdownId);
+    const allDropdowns = document.querySelectorAll('.dropdown-content');
+
+    // Close all other dropdowns
+    allDropdowns.forEach(d => {
+        if (d.id !== dropdownId) {
+            d.classList.remove('show');
+        }
+    });
+
+    // Toggle current dropdown
+    dropdown.classList.toggle('show');
+}
+
+// Close dropdown when clicking outside
+window.onclick = function (event) {
+    if (!event.target.matches('.dropdown-btn')) {
+        const dropdowns = document.querySelectorAll('.dropdown-content');
+        dropdowns.forEach(dropdown => {
+            if (dropdown.classList.contains('show')) {
+                dropdown.classList.remove('show');
+            }
+        });
+    }
+}
+
+// =========================================================
+// 10. Initialize Application
+// =========================================================
 window.onload = () => {
+    // Fetch initial Bitcoin price
+    fetchBitcoinPrice();
+
+    // Update price every 30 seconds
+    setInterval(fetchBitcoinPrice, 30000);
+
+    // Check challenge status
     checkChallengeStatus();
+
+    // Update status every minute
     setInterval(checkChallengeStatus, 60000);
+
+    // Fetch participants and winners
+    fetchParticipants();
+    displayWinners();
+
+    // Refresh lists every 30 seconds
+    setInterval(fetchParticipants, 30000);
+    setInterval(displayWinners, 30000);
 };
