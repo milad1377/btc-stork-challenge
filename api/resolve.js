@@ -1,23 +1,21 @@
 const { MongoClient } = require('mongodb');
-const { ethers } = require('ethers'); // نسخه 6
+const { ethers } = require('ethers');
 
-const BTC_FEED_KEY = '0x7404e3d104ea7841c3d9e6fd20adfe99b4ad586bc08d8f3bd3afef894cf184de';
-// ABI برای خواندن قیمت (استاندارد Stork)
-const STORK_READER_ABI = [
-  "function getLatestPrice(bytes32 feedId) view returns (uint256 price, uint256 timestamp)"
-];
-
+// تنظیمات اتصال
 const MONGODB_URI = process.env.MONGODB_URI;
 const RPC_URL = process.env.RPC_URL;
-const STORK_READER_ADDRESS = process.env.STORK_READER_ADDRESS;
+const FEED_ADDRESS = process.env.STORK_READER_ADDRESS; // آدرس فید که در Vercel تنظیم کردید
 const DB_NAME = 'BTC_Challenge';
+
+// استاندارد جدید برای خواندن قیمت (Chainlink Interface)
+const FEED_ABI = [
+  "function latestRoundData() view returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound)"
+];
 
 let cachedDb = null;
 
 async function connectToDatabase() {
     if (cachedDb) return cachedDb;
-    if (!MONGODB_URI) throw new Error("MONGODB_URI missing");
-    
     const client = await MongoClient.connect(MONGODB_URI);
     cachedDb = client.db(DB_NAME);
     return cachedDb;
@@ -25,38 +23,69 @@ async function connectToDatabase() {
 
 module.exports = async (req, res) => {
     try {
-        // بررسی متغیرها
-        if (!RPC_URL || !STORK_READER_ADDRESS) {
+        if (!RPC_URL || !FEED_ADDRESS) {
             throw new Error("Missing RPC_URL or STORK_READER_ADDRESS");
         }
 
-        // 1. اتصال به Stork (سینتکس Ethers v6)
-        // تغییر مهم: حذف .providers
+        // 1. اتصال به شبکه Arbitrum و خواندن قیمت
         const provider = new ethers.JsonRpcProvider(RPC_URL);
-        const priceReader = new ethers.Contract(STORK_READER_ADDRESS, STORK_READER_ABI, provider);
+        const priceFeed = new ethers.Contract(FEED_ADDRESS, FEED_ABI, provider);
 
-        // خواندن قیمت
-        const result = await priceReader.getLatestPrice(BTC_FEED_KEY);
-        // نتیجه آرایه است: [price, timestamp]
-        const priceRaw = result[0]; 
+        // دریافت آخرین قیمت
+        const roundData = await priceFeed.latestRoundData();
+        const priceRaw = roundData.answer; // قیمت خام (مثلاً 9800000000000)
         
-        // تغییر مهم: formatUnits مستقیم در ethers است
+        // تبدیل به عدد اعشاری (8 رقم اعشار برای BTC)
         const finalPrice = parseFloat(ethers.formatUnits(priceRaw, 8));
 
-        // 2. اتصال به دیتابیس
+        // 2. ذخیره و محاسبه در دیتابیس
         const db = await connectToDatabase();
         const challengeKey = new Date().toISOString().slice(0, 10);
-        
-        // ... (ادامه منطق محاسبه برنده - ثابت است) ...
-        // برای تست سریع فعلا قیمت را برمی‌گردانیم
+        const winnersCollection = db.collection('winners');
+
+        // بررسی اینکه آیا قبلاً برای امروز محاسبه شده؟
+        const existing = await winnersCollection.findOne({ _id: challengeKey });
+        if (existing) {
+            return res.status(200).json({ 
+                status: 'RESOLVED', 
+                finalPrice: existing.finalPrice,
+                message: 'Challenge already resolved for today'
+            });
+        }
+
+        // پیدا کردن برندگان
+        const predictionsCollection = db.collection('predictions');
+        const predictions = await predictionsCollection.find({ challengeDate: challengeKey }).toArray();
+
+        // محاسبه اختلاف
+        predictions.forEach(p => {
+            p.difference = Math.abs(p.prediction - finalPrice);
+        });
+
+        // مرتب‌سازی و انتخاب 3 نفر اول
+        predictions.sort((a, b) => a.difference - b.difference);
+        const topWinners = predictions.slice(0, 3).map(w => ({
+            discordUsername: w.discordUsername,
+            prediction: w.prediction,
+            difference: w.difference
+        }));
+
+        // ذخیره نتیجه نهایی
+        await winnersCollection.insertOne({
+            _id: challengeKey,
+            finalPrice: finalPrice,
+            topWinners: topWinners,
+            resolvedAt: new Date()
+        });
+
         return res.status(200).json({ 
             status: 'SUCCESS', 
             finalPrice, 
-            message: 'Price fetched successfully' 
+            winners: topWinners 
         });
 
     } catch (error) {
         console.error("Resolution Error:", error);
-        return res.status(500).json({ error: error.message });
+        return res.status(500).json({ error: error.message, stack: error.stack });
     }
 };
