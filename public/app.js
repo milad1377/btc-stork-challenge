@@ -1,15 +1,15 @@
 // =========================================================
 // 1. Challenge Settings - Daily Challenge
 // =========================================================
+// FOR TESTING: Fixed deadline 10 minutes from page load
+const FIXED_DEADLINE = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes from now
+
 function getTodaysChallengeDeadline() {
-    const now = new Date();
-    // FOR TESTING: Set deadline to 1 hour from now
-    const deadline = new Date(now.getTime() + 60 * 60 * 1000); // 1 hour from now
-    return deadline;
+    return FIXED_DEADLINE;
 }
 
 const deadlineUTC = getTodaysChallengeDeadline();
-const lockDownPeriodHours = 0.25; // 15 minutes before deadline for testing
+const lockDownPeriodHours = 0.08; // 5 minutes before deadline for testing
 const lockDownTime = new Date(deadlineUTC.getTime() - lockDownPeriodHours * 60 * 60 * 1000);
 
 // =========================================================

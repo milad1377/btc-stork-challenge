@@ -1,41 +1,29 @@
-// api/all-winners.js
-const { MongoClient } = require('mongodb');
+const { createClient } = require('@supabase/supabase-js');
 
-const MONGODB_URI = process.env.MONGODB_URI;
-const DB_NAME = 'BTC_Challenge';
-
-let cachedDb = null;
-
-async function connectToDatabase() {
-    if (cachedDb) return cachedDb;
-    const client = await MongoClient.connect(MONGODB_URI);
-    cachedDb = client.db(DB_NAME);
-    return cachedDb;
-}
+const supabase = createClient(
+    process.env.SUPABASE_URL,
+    process.env.SUPABASE_ANON_KEY
+);
 
 module.exports = async (req, res) => {
-    // Only accept GET requests
     if (req.method !== 'GET') {
         return res.status(405).json({ error: 'Method Not Allowed' });
     }
 
     try {
-        const db = await connectToDatabase();
-        const winnersCollection = db.collection('winners');
+        const { data: allWinners, error } = await supabase
+            .from('winners')
+            .select('*')
+            .order('id', { ascending: false })
+            .limit(30);
 
-        // Get all winners, sorted by date (newest first)
-        const allWinners = await winnersCollection
-            .find({})
-            .sort({ _id: -1 })
-            .limit(30) // Last 30 days
-            .toArray();
+        if (error) throw error;
 
-        // Format the response
         const formattedWinners = allWinners.map(day => ({
-            date: day._id,
-            finalPrice: day.finalPrice,
-            winners: day.topWinners,
-            resolvedAt: day.resolvedAt
+            date: day.id,
+            finalPrice: day.final_price,
+            winners: day.top_winners,
+            resolvedAt: day.created_at
         }));
 
         res.status(200).json({

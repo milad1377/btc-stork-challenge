@@ -1,20 +1,11 @@
-// api/get-winners.js
-const { MongoClient } = require('mongodb');
+const { createClient } = require('@supabase/supabase-js');
 
-const MONGODB_URI = process.env.MONGODB_URI;
-const DB_NAME = 'BTC_Challenge';
-
-let cachedDb = null;
-
-async function connectToDatabase() {
-    if (cachedDb) return cachedDb;
-    const client = await MongoClient.connect(MONGODB_URI);
-    cachedDb = client.db(DB_NAME);
-    return cachedDb;
-}
+const supabase = createClient(
+    process.env.SUPABASE_URL,
+    process.env.SUPABASE_ANON_KEY
+);
 
 module.exports = async (req, res) => {
-    // Only accept GET requests
     if (req.method !== 'GET') {
         return res.status(405).json({ error: 'Method Not Allowed' });
     }
@@ -26,13 +17,13 @@ module.exports = async (req, res) => {
             return res.status(400).json({ error: 'Date parameter is required' });
         }
 
-        const db = await connectToDatabase();
-        const winnersCollection = db.collection('winners');
+        const { data: result, error } = await supabase
+            .from('winners')
+            .select('*')
+            .eq('id', date)
+            .single();
 
-        // Search for results for the specified date
-        const result = await winnersCollection.findOne({ _id: date });
-
-        if (!result) {
+        if (error || !result) {
             return res.status(404).json({
                 status: 'NOT_RESOLVED',
                 message: 'Challenge not yet resolved for this date.'
@@ -41,9 +32,9 @@ module.exports = async (req, res) => {
 
         res.status(200).json({
             status: 'SUCCESS',
-            finalPrice: result.finalPrice,
-            winners: result.topWinners, // Changed from topWinners to winners
-            resolvedAt: result.resolvedAt
+            finalPrice: result.final_price,
+            winners: result.top_winners,
+            resolvedAt: result.created_at
         });
 
     } catch (error) {
