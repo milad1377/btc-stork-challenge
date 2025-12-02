@@ -27,6 +27,20 @@ module.exports = async (req, res) => {
             return res.status(400).json({ error: 'اطلاعات ناقص است' });
         }
 
+        // چک کردن نام کاربری تکراری در همان روز
+        const { data: existingUser, error: checkError } = await supabase
+            .from('predictions')
+            .select('*')
+            .eq('discord_username', discordUsername)
+            .eq('challenge_date', challengeDate)
+            .single();
+
+        if (existingUser) {
+            return res.status(400).json({
+                error: 'This username has already participated in this challenge'
+            });
+        }
+
         // درج در Supabase
         const { data, error } = await supabase
             .from('predictions')
