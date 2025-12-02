@@ -3,9 +3,9 @@
 // =========================================================
 function getTodaysChallengeDeadline() {
     const now = new Date();
-    const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0));
+    const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 30, 0));
 
-    // If current time is past today's 00:00 UTC, move to tomorrow's challenge
+    // If current time is past today's 00:30 UTC, move to tomorrow's challenge
     if (now >= today) {
         today.setUTCDate(today.getUTCDate() + 1);
     }

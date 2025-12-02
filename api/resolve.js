@@ -1,28 +1,28 @@
 const { createClient } = require('@supabase/supabase-js');
 const { ethers } = require('ethers');
 
-// تنظیمات Supabase
+// Supabase settings
 const supabase = createClient(
     process.env.SUPABASE_URL,
     process.env.SUPABASE_ANON_KEY
 );
 
-// تنظیمات بلاکچین (از مرحله قبل ثابت مانده)
+// Blockchain settings (same Chainlink address as before)
 const RPC_URL = process.env.RPC_URL;
-const FEED_ADDRESS = process.env.STORK_READER_ADDRESS; // همان آدرس Chainlink که دادم
+const FEED_ADDRESS = process.env.STORK_READER_ADDRESS;
 const FEED_ABI = [
     "function latestRoundData() view returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound)"
 ];
 
 module.exports = async (req, res) => {
     try {
-        // 1. خواندن قیمت از بلاکچین
+        // 1. Read price from blockchain
         const provider = new ethers.JsonRpcProvider(RPC_URL);
         const priceFeed = new ethers.Contract(FEED_ADDRESS, FEED_ABI, provider);
         const roundData = await priceFeed.latestRoundData();
         const finalPrice = parseFloat(ethers.formatUnits(roundData.answer, 8));
 
-        // 2. چک کردن اینکه آیا قبلا محاسبه شده؟
+        // 2. Check if already calculated
         const challengeKey = new Date().toISOString().slice(0, 10);
 
         const { data: existing } = await supabase
@@ -35,7 +35,7 @@ module.exports = async (req, res) => {
             return res.status(200).json({ status: 'RESOLVED', finalPrice: existing.final_price });
         }
 
-        // 3. گرفتن پیش‌بینی‌ها از Supabase
+        // 3. Get predictions from Supabase
         const { data: predictions, error } = await supabase
             .from('predictions')
             .select('*')
@@ -43,7 +43,7 @@ module.exports = async (req, res) => {
 
         if (error) throw error;
 
-        // 4. محاسبه ریاضی
+        // 4. Calculate differences
         const results = predictions.map(p => ({
             discordUsername: p.discord_username,
             prediction: p.prediction,
@@ -53,7 +53,7 @@ module.exports = async (req, res) => {
         results.sort((a, b) => a.difference - b.difference);
         const topWinners = results.slice(0, 3);
 
-        // 5. ذخیره برندگان
+        // 5. Save winners
         const { error: insertError } = await supabase
             .from('winners')
             .insert([{

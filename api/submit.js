@@ -1,13 +1,13 @@
 const { createClient } = require('@supabase/supabase-js');
 
-// اتصال به Supabase
+// Connect to Supabase
 const supabase = createClient(
     process.env.SUPABASE_URL,
     process.env.SUPABASE_ANON_KEY
 );
 
 module.exports = async (req, res) => {
-    // حل مشکل CORS
+    // Handle CORS
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -23,25 +23,29 @@ module.exports = async (req, res) => {
     try {
         const { discordUsername, prediction, challengeDate } = req.body;
 
-        if (!discordUsername || !prediction) {
-            return res.status(400).json({ error: 'اطلاعات ناقص است' });
+        if (!discordUsername || !prediction || !challengeDate) {
+            return res.status(400).json({ error: 'Missing required fields' });
         }
 
-        // چک کردن نام کاربری تکراری در همان روز
-        const { data: existingUser, error: checkError } = await supabase
+        // Check for duplicate username on the same day
+        const { data: existingUsers, error: checkError } = await supabase
             .from('predictions')
-            .select('*')
+            .select('discord_username')
             .eq('discord_username', discordUsername)
-            .eq('challenge_date', challengeDate)
-            .single();
+            .eq('challenge_date', challengeDate);
 
-        if (existingUser) {
+        if (checkError) {
+            console.error('Check error:', checkError);
+            throw checkError;
+        }
+
+        if (existingUsers && existingUsers.length > 0) {
             return res.status(400).json({
                 error: 'This username has already participated in this challenge'
             });
         }
 
-        // درج در Supabase
+        // Insert into Supabase
         const { data, error } = await supabase
             .from('predictions')
             .insert([
@@ -54,7 +58,7 @@ module.exports = async (req, res) => {
 
         if (error) throw error;
 
-        return res.status(200).json({ success: true, message: 'پیش‌بینی با موفقیت ثبت شد!' });
+        return res.status(200).json({ success: true, message: 'Prediction submitted successfully!' });
 
     } catch (error) {
         console.error("Supabase Error:", error);
