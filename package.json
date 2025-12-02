@@ -2,8 +2,8 @@
   "name": "btc-stork-challenge",
   "version": "1.0.0",
   "dependencies": {
-    "mongodb": "^6.3.0",
-    "ethers": "^6.10.0", 
+    "@supabase/supabase-js": "^2.39.0",
+    "ethers": "^6.10.0",
     "node-fetch": "^3.3.2"
   }
 }

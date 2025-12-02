@@ -1,36 +1,20 @@
-const { MongoClient } = require('mongodb');
+const { createClient } = require('@supabase/supabase-js');
 
-// Get environment variable
-const MONGODB_URI = process.env.MONGODB_URI;
-const DB_NAME = 'BTC_Challenge';
-const COLLECTION_NAME = 'predictions';
-
-let cachedClient = null;
-let cachedDb = null;
-
-async function connectToDatabase() {
-    // If connection is open, use it
-    if (cachedClient && cachedDb) {
-        return { client: cachedClient, db: cachedDb };
-    }
-
-    if (!MONGODB_URI) {
-        throw new Error('Please define the MONGODB_URI environment variable');
-    }
-
-    // New connection
-    const client = await MongoClient.connect(MONGODB_URI);
-    const db = client.db(DB_NAME);
-
-    cachedClient = client;
-    cachedDb = db;
-
-    return { client, db };
-}
+// اتصال به Supabase
+const supabase = createClient(
+    process.env.SUPABASE_URL,
+    process.env.SUPABASE_ANON_KEY
+);
 
 module.exports = async (req, res) => {
-    // Fix CORS (if needed)
+    // حل مشکل CORS
     res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+    if (req.method === 'OPTIONS') {
+        return res.status(200).end();
+    }
 
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method Not Allowed' });
@@ -40,37 +24,26 @@ module.exports = async (req, res) => {
         const { discordUsername, prediction, challengeDate } = req.body;
 
         if (!discordUsername || !prediction) {
-            return res.status(400).json({ error: 'Missing data' });
+            return res.status(400).json({ error: 'اطلاعات ناقص است' });
         }
 
-        const { db } = await connectToDatabase();
-        const collection = db.collection(COLLECTION_NAME);
+        // درج در Supabase
+        const { data, error } = await supabase
+            .from('predictions')
+            .insert([
+                {
+                    discord_username: discordUsername,
+                    prediction: parseFloat(prediction),
+                    challenge_date: challengeDate
+                }
+            ]);
 
-        // Check if username already exists for this challenge date
-        const existingUser = await collection.findOne({
-            discordUsername: discordUsername,
-            challengeDate: challengeDate
-        });
+        if (error) throw error;
 
-        if (existingUser) {
-            return res.status(400).json({
-                error: 'This username has already participated in this challenge'
-            });
-        }
-
-        // Insert new prediction
-        await collection.insertOne({
-            discordUsername,
-            prediction: parseFloat(prediction),
-            challengeDate,
-            submissionTime: new Date()
-        });
-
-        return res.status(200).json({ success: true, message: 'Prediction saved!' });
+        return res.status(200).json({ success: true, message: 'پیش‌بینی با موفقیت ثبت شد!' });
 
     } catch (error) {
-        console.error("Database Error:", error);
-        // Send exact error text for debugging
-        return res.status(500).json({ error: 'Internal Server Error', details: error.message });
+        console.error("Supabase Error:", error);
+        return res.status(500).json({ error: error.message });
     }
 };
