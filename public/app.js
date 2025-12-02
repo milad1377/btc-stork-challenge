@@ -1,15 +1,20 @@
 // =========================================================
 // 1. Challenge Settings - Daily Challenge
 // =========================================================
-// FOR TESTING: Fixed deadline 10 minutes from page load
-const FIXED_DEADLINE = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes from now
-
 function getTodaysChallengeDeadline() {
-    return FIXED_DEADLINE;
+    const now = new Date();
+    const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 8, 0, 0));
+
+    // If current time is past today's 8:00 UTC, move to tomorrow's challenge
+    if (now >= today) {
+        today.setUTCDate(today.getUTCDate() + 1);
+    }
+
+    return today;
 }
 
 const deadlineUTC = getTodaysChallengeDeadline();
-const lockDownPeriodHours = 0.08; // 5 minutes before deadline for testing
+const lockDownPeriodHours = 1; // 1 hour before deadline
 const lockDownTime = new Date(deadlineUTC.getTime() - lockDownPeriodHours * 60 * 60 * 1000);
 
 // =========================================================
@@ -140,13 +145,19 @@ function checkChallengeStatus() {
             minute: '2-digit'
         });
 
+        const lockdownTimeString = lockDownTime.toLocaleTimeString('en-US', {
+            timeZone: 'UTC',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+
         const deadlineDateString = deadlineUTC.toLocaleDateString('en-US', {
             timeZone: 'UTC',
             month: 'short',
             day: 'numeric'
         });
 
-        deadlineElement.innerHTML = `⏰ Deadline: ${deadlineDateString} at ${deadlineTimeString} UTC | Time remaining: ${hoursLeft}h ${minutesLeft}m`;
+        deadlineElement.innerHTML = `⏰ Final Price: ${deadlineDateString} at ${deadlineTimeString} UTC<br>🔒 Form closes at ${lockdownTimeString} UTC (1 hour before) | Time remaining: ${hoursLeft}h ${minutesLeft}m`;
 
         // Keep form enabled only if user hasn't participated
         if (!checkUserParticipation()) {
@@ -272,12 +283,12 @@ async function displayWinners() {
         const data = await response.json();
 
         if (data && data.allWinners && data.allWinners.length > 0) {
-            let totalWinners = 0;
+            // Removed totalWinners count
             winnerList.innerHTML = '';
 
             data.allWinners.forEach(day => {
                 if (day.winners && day.winners.length > 0) {
-                    totalWinners += day.winners.length;
+                    
 
                     // Add date header
                     const dateHeader = document.createElement('li');
@@ -302,7 +313,7 @@ async function displayWinners() {
                 }
             });
 
-            winnersCount.textContent = totalWinners;
+            // Count removed
         } else {
             winnersCount.textContent = '0';
             winnerList.innerHTML = '<li>No winners yet</li>';
