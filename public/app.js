@@ -3,9 +3,9 @@
 // =========================================================
 function getTodaysChallengeDeadline() {
     const now = new Date();
-    const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 8, 0, 0));
+    const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0));
 
-    // If current time is past today's 8:00 UTC, move to tomorrow's challenge
+    // If current time is past today's 00:00 UTC, move to tomorrow's challenge
     if (now >= today) {
         today.setUTCDate(today.getUTCDate() + 1);
     }
@@ -14,7 +14,7 @@ function getTodaysChallengeDeadline() {
 }
 
 const deadlineUTC = getTodaysChallengeDeadline();
-const lockDownPeriodHours = 1; // 1 hour before deadline
+const lockDownPeriodHours = 4; // 4 hours before deadline
 const lockDownTime = new Date(deadlineUTC.getTime() - lockDownPeriodHours * 60 * 60 * 1000);
 
 // =========================================================
@@ -157,7 +157,7 @@ function checkChallengeStatus() {
             day: 'numeric'
         });
 
-        deadlineElement.innerHTML = `⏰ Final Price: ${deadlineDateString} at ${deadlineTimeString} UTC<br>🔒 Form closes at ${lockdownTimeString} UTC (1 hour before) | Time remaining: ${hoursLeft}h ${minutesLeft}m`;
+        deadlineElement.innerHTML = `⏰ Final Price: ${deadlineDateString} at ${deadlineTimeString} UTC<br>🔒 Form closes at ${lockdownTimeString} UTC (4 hours before) | Time remaining: ${hoursLeft}h ${minutesLeft}m`;
 
         // Keep form enabled only if user hasn't participated
         if (!checkUserParticipation()) {
@@ -288,7 +288,7 @@ async function displayWinners() {
 
             data.allWinners.forEach(day => {
                 if (day.winners && day.winners.length > 0) {
-                    
+
 
                     // Add date header
                     const dateHeader = document.createElement('li');
