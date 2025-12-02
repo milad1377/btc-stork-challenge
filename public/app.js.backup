@@ -3,13 +3,18 @@
 // =========================================================
 function getTodaysChallengeDeadline() {
     const now = new Date();
-    // FOR TESTING: Set deadline to 1 hour from now
-    const deadline = new Date(now.getTime() + 60 * 60 * 1000); // 1 hour from now
-    return deadline;
+    const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 12, 0, 0));
+
+    // If current time is past today's 12:00 UTC, move to tomorrow's challenge
+    if (now >= today) {
+        today.setUTCDate(today.getUTCDate() + 1);
+    }
+
+    return today;
 }
 
 const deadlineUTC = getTodaysChallengeDeadline();
-const lockDownPeriodHours = 0.25; // 15 minutes before deadline for testing
+const lockDownPeriodHours = 4;
 const lockDownTime = new Date(deadlineUTC.getTime() - lockDownPeriodHours * 60 * 60 * 1000);
 
 // =========================================================
@@ -29,7 +34,7 @@ async function fetchBitcoinPrice() {
 
             const now = new Date();
             const timeString = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-            updateTimeElement.textContent = `Last updated: ${timeString} (Stork Network)`;
+            updateTimeElement.textContent = `Last updated: \$\{timeString\} (Stork Network)`;
         } else {
             throw new Error('Invalid data format');
         }
@@ -160,11 +165,7 @@ function checkChallengeStatus() {
 // 6. Submit Prediction
 // =========================================================
 async function submitPrediction() {
-    let username = document.getElementById('discord-username').value.trim();
-    // Add @ prefix if not already present
-    if (username && !username.startsWith('@')) {
-        username = '@' + username;
-    }
+    const username = document.getElementById('discord-username').value.trim();
     const price = document.getElementById('predicted-price').value.trim();
     const messageElement = document.getElementById('message');
 
@@ -266,43 +267,26 @@ async function triggerResolution() {
 async function displayWinners() {
     const winnerList = document.getElementById('winners-list');
     const winnersCount = document.getElementById('winners-count');
+    const challengeKey = deadlineUTC.toISOString().slice(0, 10);
 
     try {
-        const response = await fetch('/api/all-winners');
+        const response = await fetch(`/api/get-winners?date=${challengeKey}`);
         const data = await response.json();
 
-        if (data && data.allWinners && data.allWinners.length > 0) {
-            let totalWinners = 0;
+        if (data && data.winners && data.winners.length > 0) {
+            winnersCount.textContent = data.winners.length;
             winnerList.innerHTML = '';
 
-            data.allWinners.forEach(day => {
-                if (day.winners && day.winners.length > 0) {
-                    totalWinners += day.winners.length;
-
-                    // Add date header
-                    const dateHeader = document.createElement('li');
-                    dateHeader.style.fontWeight = 'bold';
-                    dateHeader.style.marginTop = '10px';
-                    dateHeader.style.borderTop = '1px solid rgba(102, 126, 234, 0.3)';
-                    dateHeader.style.paddingTop = '10px';
-                    dateHeader.innerHTML = `📅 ${new Date(day.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
-                    winnerList.appendChild(dateHeader);
-
-                    // Add winners for this day
-                    day.winners.forEach((winner, index) => {
-                        const li = document.createElement('li');
-                        const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉';
-                        li.innerHTML = `
-                            ${medal} <strong>${winner.username}</strong><br>
-                            Prediction: $${winner.prediction.toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                            ${winner.difference ? `<br>Difference: $${winner.difference.toFixed(2)}` : ''}
-                        `;
-                        winnerList.appendChild(li);
-                    });
-                }
+            data.winners.forEach((winner, index) => {
+                const li = document.createElement('li');
+                const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉';
+                li.innerHTML = `
+                    ${medal} <strong>${winner.username}</strong><br>
+                    Prediction: $${winner.prediction.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                    ${winner.difference ? `<br>Difference: $${winner.difference.toFixed(2)}` : ''}
+                `;
+                winnerList.appendChild(li);
             });
-
-            winnersCount.textContent = totalWinners;
         } else {
             winnersCount.textContent = '0';
             winnerList.innerHTML = '<li>No winners yet</li>';
@@ -367,5 +351,4 @@ window.onload = () => {
     // Refresh lists every 30 seconds
     setInterval(fetchParticipants, 30000);
     setInterval(displayWinners, 30000);
-
 };

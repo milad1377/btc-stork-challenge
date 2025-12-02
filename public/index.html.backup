@@ -253,10 +253,7 @@
 
         @keyframes spin {
             to {
-                transform: rotate(360deg);
-            }
-        }
-
+                transform: rotate(360deg);`r`n        }`r`n
         .stork-chart-container {
             margin-top: 20px;
             width: 100%;
@@ -271,10 +268,13 @@
             height: 100%;
             border: none;
         }
+        }
 
         .deadline-info {
             background: rgba(255, 255, 255, 0.2);
             backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 15px;
             margin-bottom: 25px;
             text-align: center;
             color: #ffffff;
@@ -312,26 +312,6 @@
 
         input::placeholder {
             color: rgba(0, 0, 0, 0.5);
-        }
-        .input-wrapper {
-            position: relative;
-            width: 100%;
-        }
-
-        .input-prefix {
-            position: absolute;
-            left: 20px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: #333;
-            font-size: 16px;
-            font-weight: 500;
-            pointer-events: none;
-            z-index: 1;
-        }
-
-        .input-wrapper input {
-            padding-left: 40px;
         }
 
         button {
@@ -458,11 +438,17 @@
 
             <!-- Real-time Bitcoin Price Display -->
             <div class="btc-price-section">
-                <div class="btc-price-label">Live Bitcoin Price Chart (Stork Network)</div>
-
+                <div class="btc-price-label">Live Bitcoin Price (Stork Network)</div>
+                <div class="btc-price-value" id="btc-price">
+                    <span class="loading-spinner"></span>
+                </div>
+                <div class="btc-price-update" id="price-update-time">Loading...</div>                
                 <!-- Stork Chart Embed -->
                 <div class="stork-chart-container">
-                    <iframe src="https://data.stork.network/assets/BTCUSDT" frameborder="0" id="stork-chart"
+                    <iframe 
+                        src="https://data.stork.network/assets/BTCUSDT" 
+                        frameborder="0"
+                        id="stork-chart"
                         title="Stork Network BTC Chart">
                     </iframe>
                 </div>
@@ -471,10 +457,7 @@
             <p class="deadline-info" id="deadline-status">Loading status...</p>
 
             <div id="prediction-form">
-                <div class="input-wrapper">
-                    <span class="input-prefix">@</span>
-                    <input type="text" id="discord-username" placeholder="username" required>
-                </div>
+                <input type="text" id="discord-username" placeholder="Discord Username (e.g., user#1234)" required>
                 <input type="number" id="predicted-price" placeholder="BTC Price Prediction at 12:00 UTC (USD)" required
                     step="0.01">
                 <button onclick="submitPrediction()">Submit Prediction</button>
