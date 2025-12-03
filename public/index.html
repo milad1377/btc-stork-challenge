@@ -313,6 +313,7 @@
         input::placeholder {
             color: rgba(0, 0, 0, 0.5);
         }
+
         .input-wrapper {
             position: relative;
             width: 100%;
@@ -473,10 +474,10 @@
             <div id="prediction-form">
                 <div class="input-wrapper">
                     <span class="input-prefix">@</span>
-                    <input type="text" id="discord-username" placeholder="username" required>
+                    <input type="text" id="discord-username" placeholder="Discord Username" required>
                 </div>
-                <input type="number" id="predicted-price" placeholder="BTC Price Prediction at 12:00 UTC (USD)" required
-                    step="0.01">
+                <input type="number" id="predicted-price" placeholder="BTC Price Prediction at 12:00 PM UTC (USDT)"
+                    required step="100">
                 <button onclick="submitPrediction()">Submit Prediction</button>
             </div>
 
