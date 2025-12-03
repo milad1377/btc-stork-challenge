@@ -44,13 +44,13 @@ module.exports = async (req, res) => {
         if (error) throw error;
 
         // 4. Calculate differences
-        const results = predictions.map(p => ({
-            discordUsername: p.discord_username,
-            prediction: p.prediction,
-            difference: Math.abs(p.prediction - finalPrice)
-        }));
-
-        // api/resolve.js
+const results = predictions.map(p => ({
+    discordUsername: p.discord_username,
+    prediction: p.prediction,
+    difference: Math.abs(p.prediction - finalPrice),
+    // >> اصلاح ضروری: اضافه کردن زمان ثبت از دیتابیس
+    submissionTime: p.created_at 
+}));
 
 // ... (حدود خط 53 در تابع module.exports)
 
