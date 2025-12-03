@@ -272,7 +272,7 @@ async function triggerResolution() {
 }
 
 // =========================================================
-// 8. Display Winners
+// 8. Display Winners (Fixes: Username & Final Price)
 // =========================================================
 async function displayWinners() {
     const winnerList = document.getElementById('winners-list');
@@ -283,37 +283,50 @@ async function displayWinners() {
         const data = await response.json();
 
         if (data && data.allWinners && data.allWinners.length > 0) {
-            // Removed totalWinners count
+            let totalWinners = 0;
             winnerList.innerHTML = '';
 
             data.allWinners.forEach(day => {
                 if (day.winners && day.winners.length > 0) {
+                    totalWinners += day.winners.length;
 
+                    // --- FIX 1: Format and Display Final Price ---
+                    const finalPriceDisplay = day.finalPrice 
+                        ? `$${parseFloat(day.finalPrice).toLocaleString('en-US', { minimumFractionDigits: 2 })}` 
+                        : 'N/A';
 
-                    // Add date header
+                    // Create Date Header
                     const dateHeader = document.createElement('li');
                     dateHeader.style.fontWeight = 'bold';
                     dateHeader.style.marginTop = '10px';
                     dateHeader.style.borderTop = '1px solid rgba(102, 126, 234, 0.3)';
                     dateHeader.style.paddingTop = '10px';
-                    dateHeader.innerHTML = `📅 ${new Date(day.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+                    dateHeader.style.color = '#4fd1c5'; // Light green color for emphasis
+                    
+                    // Set Header Text: Date + Final Price
+                    dateHeader.innerHTML = `📅 ${new Date(day.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} — Final: ${finalPriceDisplay}`;
                     winnerList.appendChild(dateHeader);
 
                     // Add winners for this day
                     day.winners.forEach((winner, index) => {
                         const li = document.createElement('li');
                         const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉';
+                        
+                        // --- FIX 2: Check for 'discordUsername' first ---
+                        // The database saves it as 'discordUsername', so we must check that property.
+                        const safeUsername = winner.discordUsername || winner.username || 'Unknown User';
+
                         li.innerHTML = `
-                            ${medal} <strong>${winner.username}</strong><br>
-                            Prediction: $${winner.prediction.toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                            ${winner.difference ? `<br>Difference: $${winner.difference.toFixed(2)}` : ''}
+                            ${medal} <strong>${safeUsername}</strong><br>
+                            Prediction: $${parseFloat(winner.prediction).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                            ${winner.difference !== undefined ? `<br><span style="font-size:0.9em; opacity:0.8">Diff: $${parseFloat(winner.difference).toFixed(2)}</span>` : ''}
                         `;
                         winnerList.appendChild(li);
                     });
                 }
             });
 
-            // Count removed
+            winnersCount.textContent = totalWinners;
         } else {
             winnersCount.textContent = '0';
             winnerList.innerHTML = '<li>No winners yet</li>';
