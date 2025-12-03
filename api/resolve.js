@@ -50,9 +50,28 @@ module.exports = async (req, res) => {
             difference: Math.abs(p.prediction - finalPrice)
         }));
 
-        results.sort((a, b) => a.difference - b.difference);
-        const topWinners = results.slice(0, 3);
+        // api/resolve.js
 
+// ... (حدود خط 53 در تابع module.exports)
+
+// منطق جدید مرتب‌سازی دو مرحله‌ای: اول اختلاف، دوم زمان ثبت (Submission Time)
+results.sort((a, b) => {
+    // مرحله 1: اگر اختلاف متفاوت بود، بر اساس کمترین اختلاف مرتب کن.
+    if (a.difference !== b.difference) {
+        return a.difference - b.difference;
+    }
+
+    // مرحله 2: اگر اختلاف برابر بود (مثلاً هر دو صفر)، بر اساس زمان ثبت مرتب کن.
+    // زمان ثبت در Supabase به نام created_at است.
+    const timeA = new Date(a.submissionTime).getTime(); // زمان ثبت رکورد A
+    const timeB = new Date(b.submissionTime).getTime(); // زمان ثبت رکورد B
+
+    // زمان قدیمی‌تر (عدد کمتر) باید اول بیاید.
+    return timeA - timeB;
+});
+
+const topWinners = results.slice(0, 3); // انتخاب ۳ نفر اول
+// ...
         // 5. Save winners
         const { error: insertError } = await supabase
             .from('winners')
