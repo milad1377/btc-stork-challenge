@@ -291,8 +291,13 @@ async function displayWinners() {
                     totalWinners += day.winners.length;
 
                     // --- FIX 1: Format and Display Final Price ---
+<<<<<<< HEAD
                     const finalPriceDisplay = day.finalPrice
                         ? `$${parseFloat(day.finalPrice).toLocaleString('en-US', { minimumFractionDigits: 2 })}`
+=======
+                    const finalPriceDisplay = day.finalPrice 
+                        ? `$${parseFloat(day.finalPrice).toLocaleString('en-US', { minimumFractionDigits: 2 })}` 
+>>>>>>> 6fd31e1cf82dd5ff674d5150433bbd0ba61b7dd8
                         : 'N/A';
 
                     // Create Date Header
@@ -302,7 +307,11 @@ async function displayWinners() {
                     dateHeader.style.borderTop = '1px solid rgba(102, 126, 234, 0.3)';
                     dateHeader.style.paddingTop = '10px';
                     dateHeader.style.color = '#4fd1c5'; // Light green color for emphasis
+<<<<<<< HEAD
 
+=======
+                    
+>>>>>>> 6fd31e1cf82dd5ff674d5150433bbd0ba61b7dd8
                     // Set Header Text: Date + Final Price
                     dateHeader.innerHTML = `📅 ${new Date(day.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} — Final: ${finalPriceDisplay}`;
                     winnerList.appendChild(dateHeader);
@@ -311,7 +320,11 @@ async function displayWinners() {
                     day.winners.forEach((winner, index) => {
                         const li = document.createElement('li');
                         const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉';
+<<<<<<< HEAD
 
+=======
+                        
+>>>>>>> 6fd31e1cf82dd5ff674d5150433bbd0ba61b7dd8
                         // --- FIX 2: Check for 'discordUsername' first ---
                         // The database saves it as 'discordUsername', so we must check that property.
                         const safeUsername = winner.discordUsername || winner.username || 'Unknown User';
